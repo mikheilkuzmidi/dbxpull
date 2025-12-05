@@ -83,7 +83,7 @@ def setup_logging(log_file: Path) -> None:
 
 def validate_and_connect(config: Config) -> "dropbox.Dropbox":
     """Validate config and connect to Dropbox. Returns Dropbox client."""
-    from .display import print_error, print_header, print_info, print_success
+    from .display import print_error, print_header, print_info, print_success, print_warning
     from .utils import human_size
 
     try:
@@ -127,10 +127,24 @@ def validate_and_connect(config: Config) -> "dropbox.Dropbox":
     print_info("Connecting to Dropbox...")
 
     try:
-        dbx = dropbox.Dropbox(
-            oauth2_access_token=config.access_token,
-            timeout=config.download_timeout,
-        )
+        # Use refresh token authentication if available (recommended - auto-refreshes)
+        if config.has_refresh_token_auth():
+            print_info("Using refresh token authentication (auto-refresh enabled)")
+            dbx = dropbox.Dropbox(
+                app_key=config.app_key,
+                app_secret=config.app_secret,
+                oauth2_refresh_token=config.refresh_token,
+                timeout=config.download_timeout,
+            )
+        else:
+            # Fall back to legacy access token
+            print_warning("Using legacy access token (may expire during long backups)")
+            print_info("Run 'dropbox-backup auth' to set up auto-refreshing tokens")
+            dbx = dropbox.Dropbox(
+                oauth2_access_token=config.access_token,
+                timeout=config.download_timeout,
+            )
+
         account = dbx.users_get_current_account()
         print_success(f"Connected: {account.name.display_name} ({account.email})")
 
@@ -147,7 +161,10 @@ def validate_and_connect(config: Config) -> "dropbox.Dropbox":
 
     except AuthError as e:
         print_error(f"Authentication failed: {e}")
-        print_info("Your token may have expired. Generate a new one from the Dropbox App Console.")
+        if config.has_refresh_token_auth():
+            print_info("Your refresh token may be invalid. Run 'dropbox-backup auth' to re-authenticate.")
+        else:
+            print_info("Your access token has expired. Run 'dropbox-backup auth' to set up auto-refreshing tokens.")
         sys.exit(1)
     except Exception as e:
         print_error(f"Connection failed: {e}")
@@ -264,17 +281,19 @@ def main(config: Config | None = None) -> int:
             print_error("No destination folder selected. Exiting.")
             return 1
 
-    # Check if token is missing
-    if not config.access_token or "PASTE" in config.access_token:
+    # Check if authentication is configured
+    if not config.has_refresh_token_auth() and not config.has_legacy_token_auth():
         print_header("Configuration")
         print()
-        print_error("DROPBOX_ACCESS_TOKEN not configured!")
+        print_error("No Dropbox authentication configured!")
         print()
-        print_info("To get your access token:")
-        print("    1. Go to https://www.dropbox.com/developers/apps")
-        print("    2. Create an app (or select existing)")
-        print("    3. Generate an access token")
-        print("    4. Add it to your .env file")
+        print_info("Run 'dropbox-backup auth' to set up authentication.")
+        print()
+        print_info("Or manually configure in your .env file:")
+        print("    # Recommended: OAuth with auto-refresh")
+        print("    DROPBOX_APP_KEY=your_app_key")
+        print("    DROPBOX_APP_SECRET=your_app_secret")
+        print("    DROPBOX_REFRESH_TOKEN=your_refresh_token")
         print()
         return 1
 
@@ -355,5 +374,204 @@ def main(config: Config | None = None) -> int:
     return 1 if stats.files_failed > 0 else 0
 
 
+def run_auth() -> int:
+    """
+    Run the OAuth flow to obtain a refresh token.
+
+    Returns:
+        Exit code (0 for success, non-zero for errors)
+    """
+    from .display import Colors, print_error, print_header, print_info, print_success, print_warning
+
+    try:
+        from dropbox import DropboxOAuth2FlowNoRedirect
+    except ImportError:
+        print_error("The 'dropbox' package is required.")
+        print_info("Install it with: pip install dropbox")
+        return 1
+
+    print()
+    print_header("Dropbox OAuth Setup")
+    print()
+    print_info("This will help you set up OAuth authentication with auto-refreshing tokens.")
+    print_info("You'll need your App Key and App Secret from the Dropbox App Console.")
+    print()
+
+    # Load existing config to check for app_key/app_secret
+    config = Config.from_env()
+
+    # Get app key
+    if config.app_key:
+        print_info(f"Found DROPBOX_APP_KEY in environment: {config.app_key[:8]}...")
+        use_existing = input(f"  {Colors.CYAN}?{Colors.RESET} Use this app key? [Y/n]: ").strip().lower()
+        if use_existing in ("", "y", "yes"):
+            app_key = config.app_key
+        else:
+            app_key = input(f"  {Colors.CYAN}?{Colors.RESET} Enter your App Key: ").strip()
+    else:
+        print_info("Get your App Key from: https://www.dropbox.com/developers/apps")
+        app_key = input(f"  {Colors.CYAN}?{Colors.RESET} Enter your App Key: ").strip()
+
+    if not app_key:
+        print_error("App Key is required.")
+        return 1
+
+    # Get app secret
+    if config.app_secret:
+        print_info(f"Found DROPBOX_APP_SECRET in environment: {config.app_secret[:4]}...")
+        use_existing = input(f"  {Colors.CYAN}?{Colors.RESET} Use this app secret? [Y/n]: ").strip().lower()
+        if use_existing in ("", "y", "yes"):
+            app_secret = config.app_secret
+        else:
+            app_secret = input(f"  {Colors.CYAN}?{Colors.RESET} Enter your App Secret: ").strip()
+    else:
+        app_secret = input(f"  {Colors.CYAN}?{Colors.RESET} Enter your App Secret: ").strip()
+
+    if not app_secret:
+        print_error("App Secret is required.")
+        return 1
+
+    print()
+    print_info("Starting OAuth flow...")
+
+    # Start OAuth flow with offline access to get refresh token
+    auth_flow = DropboxOAuth2FlowNoRedirect(
+        app_key,
+        app_secret,
+        token_access_type="offline",  # This gives us a refresh token
+    )
+
+    authorize_url = auth_flow.start()
+
+    print()
+    print(f"  {Colors.BOLD}1.{Colors.RESET} Open this URL in your browser:")
+    print()
+    print(f"     {Colors.CYAN}{authorize_url}{Colors.RESET}")
+    print()
+    print(f"  {Colors.BOLD}2.{Colors.RESET} Click 'Allow' to authorize the app")
+    print(f"  {Colors.BOLD}3.{Colors.RESET} Copy the authorization code")
+    print()
+
+    auth_code = input(f"  {Colors.CYAN}?{Colors.RESET} Enter the authorization code: ").strip()
+
+    if not auth_code:
+        print_error("Authorization code is required.")
+        return 1
+
+    try:
+        oauth_result = auth_flow.finish(auth_code)
+    except Exception as e:
+        print_error(f"Failed to complete OAuth flow: {e}")
+        return 1
+
+    refresh_token = oauth_result.refresh_token
+
+    if not refresh_token:
+        print_error("No refresh token received. Make sure your app has offline access enabled.")
+        return 1
+
+    print()
+    print_success("Authentication successful!")
+    print()
+
+    # Show the credentials to add to .env
+    print_header("Add to your .env file")
+    print()
+    print(f"  {Colors.GREEN}# Dropbox OAuth (auto-refreshing){Colors.RESET}")
+    print(f"  {Colors.BOLD}DROPBOX_APP_KEY{Colors.RESET}=\"{app_key}\"")
+    print(f"  {Colors.BOLD}DROPBOX_APP_SECRET{Colors.RESET}=\"{app_secret}\"")
+    print(f"  {Colors.BOLD}DROPBOX_REFRESH_TOKEN{Colors.RESET}=\"{refresh_token}\"")
+    print()
+
+    # Offer to update .env file automatically
+    env_path = Path.cwd() / ".env"
+    if env_path.exists():
+        print_warning(f"Found existing .env file at {env_path}")
+        update_env = input(f"  {Colors.CYAN}?{Colors.RESET} Update .env file automatically? [Y/n]: ").strip().lower()
+    else:
+        update_env = input(f"  {Colors.CYAN}?{Colors.RESET} Create .env file? [Y/n]: ").strip().lower()
+
+    if update_env in ("", "y", "yes"):
+        _update_env_file(env_path, app_key, app_secret, refresh_token)
+        print_success(f"Updated {env_path}")
+    else:
+        print_info("Remember to add the credentials above to your .env file.")
+
+    print()
+    print_success("Setup complete! You can now run 'dropbox-backup' to start backing up.")
+    print_info("Your tokens will auto-refresh, so backups won't fail due to expiration.")
+    print()
+
+    return 0
+
+
+def _update_env_file(env_path: Path, app_key: str, app_secret: str, refresh_token: str) -> None:
+    """Update or create .env file with OAuth credentials."""
+    lines: list[str] = []
+    keys_to_update = {
+        "DROPBOX_APP_KEY": app_key,
+        "DROPBOX_APP_SECRET": app_secret,
+        "DROPBOX_REFRESH_TOKEN": refresh_token,
+    }
+    keys_found: set[str] = set()
+
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            # Check if this line sets one of our keys
+            updated = False
+            for key, value in keys_to_update.items():
+                if stripped.startswith(f"{key}=") or stripped.startswith(f"{key} ="):
+                    lines.append(f'{key}="{value}"')
+                    keys_found.add(key)
+                    updated = True
+                    break
+            if not updated:
+                lines.append(line)
+
+    # Add any missing keys
+    missing_keys = set(keys_to_update.keys()) - keys_found
+    if missing_keys:
+        if lines and lines[-1].strip():  # Add blank line if file doesn't end with one
+            lines.append("")
+        lines.append("# Dropbox OAuth (auto-refreshing)")
+        for key in ["DROPBOX_APP_KEY", "DROPBOX_APP_SECRET", "DROPBOX_REFRESH_TOKEN"]:
+            if key in missing_keys:
+                lines.append(f'{key}="{keys_to_update[key]}"')
+
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def cli_main() -> int:
+    """CLI entry point with argument parsing."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="dropbox-backup",
+        description="High-performance parallel backup tool for Dropbox",
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Auth command
+    subparsers.add_parser(
+        "auth",
+        help="Set up OAuth authentication with auto-refreshing tokens",
+    )
+
+    # Backup is the default (no subcommand needed)
+    subparsers.add_parser(
+        "backup",
+        help="Run backup (default if no command specified)",
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "auth":
+        return run_auth()
+    else:
+        # Default to backup
+        return main()
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(cli_main())

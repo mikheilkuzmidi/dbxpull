@@ -118,20 +118,30 @@ class TestConfig:
         assert config.max_concurrent_downloads == 6
         assert config.max_retries == 5
 
-    def test_config_validation_missing_token(self):
+    def test_config_validation_missing_auth(self):
         config = Config()
         errors = config.validate()
-        assert "DROPBOX_ACCESS_TOKEN is required" in errors
+        assert any("authentication" in e.lower() for e in errors)
 
     def test_config_validation_placeholder_token(self):
         config = Config(access_token="PASTE_YOUR_TOKEN_HERE")
         errors = config.validate()
-        assert any("placeholder" in e.lower() for e in errors)
+        assert any("placeholder" in e.lower() or "authentication" in e.lower() for e in errors)
 
     def test_config_validation_missing_dest(self):
         config = Config(access_token="valid_token")
         errors = config.validate()
         assert "Destination directory is required" in errors
+
+    def test_config_has_refresh_token_auth(self):
+        config = Config(app_key="key", app_secret="secret", refresh_token="token")
+        assert config.has_refresh_token_auth() is True
+        assert config.has_legacy_token_auth() is False
+
+    def test_config_has_legacy_token_auth(self):
+        config = Config(access_token="valid_token")
+        assert config.has_legacy_token_auth() is True
+        assert config.has_refresh_token_auth() is False
 
     def test_default_skip_dirs(self):
         assert "node_modules" in DEFAULT_SKIP_DIRS

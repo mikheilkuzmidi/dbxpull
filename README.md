@@ -43,13 +43,25 @@ In the **Permissions** tab, enable:
 
 Click **Submit**.
 
-### 3. Generate Access Token
+### 3. Set Up Authentication (Recommended: OAuth with Auto-Refresh)
 
-In the **Settings** tab, under **OAuth 2**, click **Generate** to create an access token.
+The recommended way to authenticate uses OAuth refresh tokens, which **never expire** and automatically refresh during long backups.
 
-### 4. Configure the App
+```bash
+# Run the interactive authentication setup
+dropbox-backup auth
+```
 
-Copy the example config and edit it:
+This will:
+1. Ask for your **App Key** and **App Secret** (found in your app's Settings tab)
+2. Open a browser for you to authorize the app
+3. Save the credentials to your `.env` file
+
+That's it! Your backups will now run without token expiration issues.
+
+### Alternative: Manual Configuration
+
+If you prefer to configure manually, copy the example config:
 
 ```bash
 cp .env.example .env
@@ -58,8 +70,12 @@ cp .env.example .env
 Edit `.env` and fill in your values:
 
 ```ini
-# REQUIRED
-DROPBOX_ACCESS_TOKEN="sl.xxxxx..."
+# RECOMMENDED: OAuth with auto-refresh (run 'dropbox-backup auth' to get these)
+DROPBOX_APP_KEY="your_app_key"
+DROPBOX_APP_SECRET="your_app_secret"  
+DROPBOX_REFRESH_TOKEN="your_refresh_token"
+
+# Backup destination
 DROPBOX_BACKUP_DEST="/path/to/backup/folder"
 
 # OPTIONAL
@@ -67,6 +83,8 @@ DROPBOX_ROOT_PATH=""                    # Folder to backup (empty = all)
 DROPBOX_CONCURRENT_DOWNLOADS="6"        # Parallel downloads
 DROPBOX_MAX_GB_PER_RUN="0"              # Limit per run (0 = unlimited)
 ```
+
+> **Note:** Legacy access tokens (from the "Generate" button) expire after 4 hours and are **not recommended** for long backups. Use `dropbox-backup auth` to set up auto-refreshing tokens instead.
 
 > **Tip:** The app automatically loads `.env` — no need to run `source .env`.
 >
@@ -114,7 +132,13 @@ By default, these folders are skipped:
 ## Troubleshooting
 
 **"Authentication failed"**  
-Your token may have expired. Generate a new one from the Dropbox App Console.
+If using legacy access tokens, they expire after 4 hours. Run `dropbox-backup auth` to set up auto-refreshing OAuth tokens instead.
+
+**"Token expired during backup"**  
+This happens with legacy access tokens on long backups. The solution is to use OAuth refresh tokens:
+```bash
+dropbox-backup auth
+```
 
 **"Rate limited" messages**  
 This is normal. The tool handles rate limits automatically with exponential backoff.

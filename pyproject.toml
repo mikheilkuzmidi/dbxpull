@@ -48,7 +48,7 @@ dev = [
 ]
 
 [project.scripts]
-dropbox-backup = "dropbox_backup.cli:main"
+dropbox-backup = "dropbox_backup.cli:cli_main"
 
 [project.urls]
 Homepage = "https://github.com/mikheilkuzmidi/dropbox-backup"

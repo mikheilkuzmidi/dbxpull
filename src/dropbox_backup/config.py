@@ -68,8 +68,15 @@ def _load_env_file(path: Path | None = None) -> None:
 class Config:
     """Application configuration."""
 
-    # Dropbox settings
+    # Dropbox OAuth settings (recommended - auto-refreshes tokens)
+    app_key: str = ""
+    app_secret: str = ""
+    refresh_token: str = ""
+
+    # Legacy access token (deprecated - expires after 4 hours)
     access_token: str = ""
+
+    # Dropbox path settings
     root_path: str = ""
 
     # Local settings
@@ -105,7 +112,13 @@ class Config:
         _load_env_file()
 
         return cls(
+            # OAuth credentials (recommended)
+            app_key=os.getenv("DROPBOX_APP_KEY", ""),
+            app_secret=os.getenv("DROPBOX_APP_SECRET", ""),
+            refresh_token=os.getenv("DROPBOX_REFRESH_TOKEN", ""),
+            # Legacy access token
             access_token=os.getenv("DROPBOX_ACCESS_TOKEN", ""),
+            # Other settings
             root_path=os.getenv("DROPBOX_ROOT_PATH", ""),
             dest_root=os.getenv("DROPBOX_BACKUP_DEST", ""),
             max_gb_per_run=float(os.getenv("DROPBOX_MAX_GB_PER_RUN", "0")),
@@ -114,14 +127,31 @@ class Config:
             max_retries=int(os.getenv("DROPBOX_MAX_RETRIES", "5")),
         )
 
+    def has_refresh_token_auth(self) -> bool:
+        """Check if refresh token authentication is configured."""
+        return bool(self.app_key and self.app_secret and self.refresh_token)
+
+    def has_legacy_token_auth(self) -> bool:
+        """Check if legacy access token authentication is configured."""
+        return bool(self.access_token and "PASTE" not in self.access_token)
+
     def validate(self) -> list[str]:
         """Validate configuration. Returns list of errors."""
         errors = []
 
-        if not self.access_token:
-            errors.append("DROPBOX_ACCESS_TOKEN is required")
-        elif "PASTE" in self.access_token:
-            errors.append("DROPBOX_ACCESS_TOKEN contains placeholder text")
+        # Check for valid authentication method
+        has_refresh = self.has_refresh_token_auth()
+        has_legacy = self.has_legacy_token_auth()
+
+        if not has_refresh and not has_legacy:
+            if self.refresh_token and not (self.app_key and self.app_secret):
+                errors.append("DROPBOX_APP_KEY and DROPBOX_APP_SECRET are required when using refresh token")
+            elif self.app_key and self.app_secret and not self.refresh_token:
+                errors.append("DROPBOX_REFRESH_TOKEN is required. Run 'dropbox-backup auth' to obtain one.")
+            elif not self.access_token:
+                errors.append("No Dropbox authentication configured. Run 'dropbox-backup auth' to set up.")
+            elif "PASTE" in self.access_token:
+                errors.append("DROPBOX_ACCESS_TOKEN contains placeholder text")
 
         if not self.dest_root:
             errors.append("Destination directory is required")
