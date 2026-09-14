@@ -7,13 +7,13 @@ A high-performance, parallel backup tool for Dropbox with smart rate limiting, b
 
 ## Features
 
-- **Parallel Downloads** — Configurable concurrent downloads (default: 6 threads)
-- **Smart Rate Limiting** — Adaptive rate limiter that adjusts based on API responses
-- **Exponential Backoff** — Automatic retry with jitter for failed requests
-- **Resume Capability** — Skips already downloaded files automatically
-- **Dependency Filtering** — Automatically skips `node_modules`, `venv`, `.git`, and 40+ other build folders
-- **Beautiful Progress Display** — Real-time progress with speed, ETA, and per-file tracking
-- **Folder Picker** — GUI dialog to select destination if not configured
+- **Parallel Downloads**: Configurable concurrent downloads (default: 6 threads)
+- **Smart Rate Limiting**: Adaptive rate limiter that adjusts based on API responses
+- **Exponential Backoff**: Automatic retry with jitter for failed requests
+- **Resume Capability**: Skips already downloaded files automatically
+- **Dependency Filtering**: Automatically skips `node_modules`, `venv`, `.git`, and 40+ other build folders
+- **Beautiful Progress Display**: Real-time progress with speed, ETA, and per-file tracking
+- **Folder Picker**: GUI dialog to select destination if not configured
 
 ## Installation
 
@@ -86,7 +86,7 @@ DROPBOX_MAX_GB_PER_RUN="0"              # Limit per run (0 = unlimited)
 
 > **Note:** Legacy access tokens (from the "Generate" button) expire after 4 hours and are **not recommended** for long backups. Use `dropbox-backup auth` to set up auto-refreshing tokens instead.
 
-> **Tip:** The app automatically loads `.env` — no need to run `source .env`.
+> **Tip:** The app automatically loads `.env`, no need to run `source .env`.
 >
 > If you leave `DROPBOX_BACKUP_DEST` empty, the app will open a folder picker dialog.
 
@@ -148,4 +148,4 @@ Make sure `tkinter` is installed. Alternatively, set `DROPBOX_BACKUP_DEST` in yo
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License, see [LICENSE](LICENSE) for details.
