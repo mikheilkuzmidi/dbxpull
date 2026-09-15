@@ -1,4 +1,4 @@
-"""Download engine for Dropbox Backup."""
+"""Download engine for dbxpull."""
 
 import contextlib
 import logging

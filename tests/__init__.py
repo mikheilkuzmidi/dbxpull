@@ -1,1 +1,1 @@
-"""Tests for dropbox_backup package."""
+"""Tests for dbxpull package."""

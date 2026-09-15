@@ -1,9 +1,11 @@
-# Dropbox Backup
+# dbxpull
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A high-performance, parallel backup tool for Dropbox with smart rate limiting, beautiful progress display, and automatic dependency folder filtering.
+Pull a whole Dropbox account down to a local or external drive, in parallel, with adaptive rate limiting, a live progress display, and automatic dependency folder filtering.
+
+Not a backup tool: there is no version history and no schedule. It is a resumable bulk download, which is what the name says.
 
 ## Features
 
@@ -18,8 +20,8 @@ A high-performance, parallel backup tool for Dropbox with smart rate limiting, b
 ## Installation
 
 ```bash
-git clone https://github.com/mikheilkuzmidi/dropbox-backup.git
-cd dropbox-backup
+git clone https://github.com/mikheilkuzmidi/dbxpull.git
+cd dbxpull
 python3 -m venv venv
 source venv/bin/activate
 pip install -e .
@@ -49,7 +51,7 @@ The recommended way to authenticate uses OAuth refresh tokens, which **never exp
 
 ```bash
 # Run the interactive authentication setup
-dropbox-backup auth
+dbxpull auth
 ```
 
 This will:
@@ -70,7 +72,7 @@ cp .env.example .env
 Edit `.env` and fill in your values:
 
 ```ini
-# RECOMMENDED: OAuth with auto-refresh (run 'dropbox-backup auth' to get these)
+# RECOMMENDED: OAuth with auto-refresh (run 'dbxpull auth' to get these)
 DROPBOX_APP_KEY="your_app_key"
 DROPBOX_APP_SECRET="your_app_secret"  
 DROPBOX_REFRESH_TOKEN="your_refresh_token"
@@ -84,7 +86,7 @@ DROPBOX_CONCURRENT_DOWNLOADS="6"        # Parallel downloads
 DROPBOX_MAX_GB_PER_RUN="0"              # Limit per run (0 = unlimited)
 ```
 
-> **Note:** Legacy access tokens (from the "Generate" button) expire after 4 hours and are **not recommended** for long backups. Use `dropbox-backup auth` to set up auto-refreshing tokens instead.
+> **Note:** Legacy access tokens (from the "Generate" button) expire after 4 hours and are **not recommended** for long backups. Use `dbxpull auth` to set up auto-refreshing tokens instead.
 
 > **Tip:** The app automatically loads `.env`, no need to run `source .env`.
 >
@@ -93,20 +95,20 @@ DROPBOX_MAX_GB_PER_RUN="0"              # Limit per run (0 = unlimited)
 ## Usage
 
 ```bash
-python3 -m dropbox_backup
+python3 -m dbxpull
 ```
 
 Or after installation:
 
 ```bash
-dropbox-backup
+dbxpull
 ```
 
 ## Example Output
 
 ```
 ╔══════════════════════════════════════════════════════════════════════╗
-║                          DROPBOX BACKUP                              ║
+║                               DBXPULL                                ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║ Parallel Downloads  •  Smart Rate Limiting  •  Exponential Backoff   ║
 ╚══════════════════════════════════════════════════════════════════════╝
@@ -132,12 +134,12 @@ By default, these folders are skipped:
 ## Troubleshooting
 
 **"Authentication failed"**  
-If using legacy access tokens, they expire after 4 hours. Run `dropbox-backup auth` to set up auto-refreshing OAuth tokens instead.
+If using legacy access tokens, they expire after 4 hours. Run `dbxpull auth` to set up auto-refreshing OAuth tokens instead.
 
 **"Token expired during backup"**  
 This happens with legacy access tokens on long backups. The solution is to use OAuth refresh tokens:
 ```bash
-dropbox-backup auth
+dbxpull auth
 ```
 
 **"Rate limited" messages**  

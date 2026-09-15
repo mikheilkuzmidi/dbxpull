@@ -1,4 +1,4 @@
-"""Command-line interface for Dropbox Backup."""
+"""Command-line interface for dbxpull."""
 
 import atexit
 import logging
@@ -139,7 +139,7 @@ def validate_and_connect(config: Config) -> "dropbox.Dropbox":
         else:
             # Fall back to legacy access token
             print_warning("Using legacy access token (may expire during long backups)")
-            print_info("Run 'dropbox-backup auth' to set up auto-refreshing tokens")
+            print_info("Run 'dbxpull auth' to set up auto-refreshing tokens")
             dbx = dropbox.Dropbox(
                 oauth2_access_token=config.access_token,
                 timeout=config.download_timeout,
@@ -162,9 +162,9 @@ def validate_and_connect(config: Config) -> "dropbox.Dropbox":
     except AuthError as e:
         print_error(f"Authentication failed: {e}")
         if config.has_refresh_token_auth():
-            print_info("Your refresh token may be invalid. Run 'dropbox-backup auth' to re-authenticate.")
+            print_info("Your refresh token may be invalid. Run 'dbxpull auth' to re-authenticate.")
         else:
-            print_info("Your access token has expired. Run 'dropbox-backup auth' to set up auto-refreshing tokens.")
+            print_info("Your access token has expired. Run 'dbxpull auth' to set up auto-refreshing tokens.")
         sys.exit(1)
     except Exception as e:
         print_error(f"Connection failed: {e}")
@@ -287,7 +287,7 @@ def main(config: Config | None = None) -> int:
         print()
         print_error("No Dropbox authentication configured!")
         print()
-        print_info("Run 'dropbox-backup auth' to set up authentication.")
+        print_info("Run 'dbxpull auth' to set up authentication.")
         print()
         print_info("Or manually configure in your .env file:")
         print("    # Recommended: OAuth with auto-refresh")
@@ -319,7 +319,7 @@ def main(config: Config | None = None) -> int:
     dbx = validate_and_connect(config)
 
     # Set up logging
-    log_file = Path.cwd() / "dropbox_backup.log"
+    log_file = Path.cwd() / "dbxpull.log"
     setup_logging(log_file)
     logger.info("=" * 50)
     logger.info("Backup started")
@@ -498,7 +498,7 @@ def run_auth() -> int:
         print_info("Remember to add the credentials above to your .env file.")
 
     print()
-    print_success("Setup complete! You can now run 'dropbox-backup' to start backing up.")
+    print_success("Setup complete! You can now run 'dbxpull' to start backing up.")
     print_info("Your tokens will auto-refresh, so backups won't fail due to expiration.")
     print()
 
@@ -547,8 +547,8 @@ def cli_main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="dropbox-backup",
-        description="High-performance parallel backup tool for Dropbox",
+        prog="dbxpull",
+        description="Pull a whole Dropbox account down to a local or external drive, in parallel",
     )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
@@ -558,10 +558,10 @@ def cli_main() -> int:
         help="Set up OAuth authentication with auto-refreshing tokens",
     )
 
-    # Backup is the default (no subcommand needed)
+    # Pulling is the default (no subcommand needed)
     subparsers.add_parser(
-        "backup",
-        help="Run backup (default if no command specified)",
+        "pull",
+        help="Pull your Dropbox down (default if no command is given)",
     )
 
     args = parser.parse_args()
@@ -569,7 +569,7 @@ def cli_main() -> int:
     if args.command == "auth":
         return run_auth()
     else:
-        # Default to backup
+        # Default to pulling
         return main()
 
 

@@ -123,5 +123,5 @@ log/
 *.backup
 
 # Project-specific
-dropbox_backup.log
+dbxpull.log
 *.part

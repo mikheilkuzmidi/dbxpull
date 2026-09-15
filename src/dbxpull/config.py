@@ -1,4 +1,4 @@
-"""Configuration management for Dropbox Backup."""
+"""Configuration management for dbxpull."""
 
 import os
 from dataclasses import dataclass, field
@@ -147,9 +147,9 @@ class Config:
             if self.refresh_token and not (self.app_key and self.app_secret):
                 errors.append("DROPBOX_APP_KEY and DROPBOX_APP_SECRET are required when using refresh token")
             elif self.app_key and self.app_secret and not self.refresh_token:
-                errors.append("DROPBOX_REFRESH_TOKEN is required. Run 'dropbox-backup auth' to obtain one.")
+                errors.append("DROPBOX_REFRESH_TOKEN is required. Run 'dbxpull auth' to obtain one.")
             elif not self.access_token:
-                errors.append("No Dropbox authentication configured. Run 'dropbox-backup auth' to set up.")
+                errors.append("No Dropbox authentication configured. Run 'dbxpull auth' to set up.")
             elif "PASTE" in self.access_token:
                 errors.append("DROPBOX_ACCESS_TOKEN contains placeholder text")
 

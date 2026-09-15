@@ -1,4 +1,4 @@
-"""Terminal display and UI components for Dropbox Backup."""
+"""Terminal display and UI components for dbxpull."""
 
 import sys
 from datetime import datetime
@@ -77,7 +77,7 @@ def print_banner() -> None:
 
     print()
     print(f"{C}╔══════════════════════════════════════════════════════════════════════╗{R}")
-    print(f"{C}║{R}{B}{W}                          DROPBOX BACKUP                              {R}{C}║{R}")
+    print(f"{C}║{R}{B}{W}                               DBXPULL                                {R}{C}║{R}")
     print(f"{C}╠══════════════════════════════════════════════════════════════════════╣{R}")
     print(f"{C}║{R} {D}Parallel Downloads   •  Smart Rate Limiting  •   Exponential Backoff{R} {C}║{R}")
     print(f"{C}╚══════════════════════════════════════════════════════════════════════╝{R}")

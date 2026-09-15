@@ -1,4 +1,4 @@
-"""File filtering logic for Dropbox Backup."""
+"""File filtering logic for dbxpull."""
 
 from pathlib import Path
 from typing import TYPE_CHECKING

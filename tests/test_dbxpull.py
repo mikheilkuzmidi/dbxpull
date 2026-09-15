@@ -1,11 +1,11 @@
-"""Tests for dropbox_backup package."""
+"""Tests for dbxpull package."""
 
 
-from dropbox_backup.config import DEFAULT_SKIP_DIRS, Config
-from dropbox_backup.filters import get_file_category, parse_extensions, should_skip_file
-from dropbox_backup.models import ActiveDownload, DownloadStats, FilterOptions
-from dropbox_backup.rate_limiter import AdaptiveRateLimiter
-from dropbox_backup.utils import (
+from dbxpull.config import DEFAULT_SKIP_DIRS, Config
+from dbxpull.filters import get_file_category, parse_extensions, should_skip_file
+from dbxpull.models import ActiveDownload, DownloadStats, FilterOptions
+from dbxpull.rate_limiter import AdaptiveRateLimiter
+from dbxpull.utils import (
     exponential_backoff_with_jitter,
     human_size,
     human_speed,

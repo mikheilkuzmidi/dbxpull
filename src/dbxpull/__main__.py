@@ -1,4 +1,4 @@
-"""Entry point for running dropbox_backup as a module."""
+"""Entry point for running dbxpull as a module."""
 
 import sys
 

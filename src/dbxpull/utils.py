@@ -1,4 +1,4 @@
-"""Utility functions for Dropbox Backup."""
+"""Utility functions for dbxpull."""
 
 import random
 import shutil

@@ -1,5 +1,5 @@
 """
-Dropbox Backup - High-performance parallel backup tool for Dropbox.
+dbxpull - High-performance parallel backup tool for Dropbox.
 
 Features:
 - Parallel downloads with configurable concurrency
@@ -10,7 +10,7 @@ Features:
 """
 
 __version__ = "1.0.0"
-__author__ = "mikheilkuzmidi"
+__author__ = "Mikheil Kuzmidi"
 __email__ = ""
 
 from .config import Config

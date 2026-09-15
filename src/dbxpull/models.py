@@ -1,4 +1,4 @@
-"""Data models for Dropbox Backup."""
+"""Data models for dbxpull."""
 
 import time
 from dataclasses import dataclass, field
