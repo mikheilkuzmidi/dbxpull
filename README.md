@@ -7,13 +7,17 @@ Pull a whole Dropbox account down to a local or external drive, in parallel, wit
 
 Not a backup tool: there is no version history and no schedule. It is a resumable bulk download, which is what the name says.
 
+![The tail of a real pull, and the summary it ends on](docs/dbxpull.gif)
+
+That is a real account being pulled down: 164 files and 751 MB in 44 seconds at 16.9 MB/s, six downloads at a time, with two rate limit hits handled by backing off rather than failing.
+
 ## Features
 
 - **Parallel Downloads**: Configurable concurrent downloads (default: 6 threads)
 - **Smart Rate Limiting**: Adaptive rate limiter that adjusts based on API responses
 - **Exponential Backoff**: Automatic retry with jitter for failed requests
 - **Resume Capability**: Skips already downloaded files automatically
-- **Dependency Filtering**: Automatically skips `node_modules`, `venv`, `.git`, and 40+ other build folders
+- **Dependency Filtering**: Automatically skips `node_modules`, `venv`, `.git` and 50 other build and dependency folders
 - **Beautiful Progress Display**: Real-time progress with speed, ETA, and per-file tracking
 - **Folder Picker**: GUI dialog to select destination if not configured
 
@@ -127,9 +131,9 @@ dbxpull
 
 ## Skipped Folders
 
-By default, these folders are skipped:
+Fifty three folder names are skipped by default, the full list being `DEFAULT_SKIP_DIRS` in `src/dbxpull/config.py`:
 
-`node_modules`, `.npm`, `.yarn`, `venv`, `.venv`, `__pycache__`, `.git`, `build`, `dist`, `.next`, `.nuxt`, `.cache`, `.idea`, `.vscode`, `Pods`, `DerivedData`, and more.
+`node_modules`, `.npm`, `.yarn`, `.pnpm-store`, `bower_components`, `venv`, `.venv`, `env`, `__pycache__`, `site-packages`, `.git`, `.hg`, `.svn`, `build`, `_build`, `dist`, `out`, `target`, `.next`, `.nuxt`, `.svelte-kit`, `.angular`, `.expo`, `.turbo`, `.parcel-cache`, `.webpack`, `.gradle`, `.maven`, `cmake-build-debug`, `cmake-build-release`, `Pods`, `DerivedData`, `.idea`, `.vscode`, `.vs`, `.eclipse`, `.settings`, `.cache`, `.mypy_cache`, `.pytest_cache`, `.tox`, `.nox`, `.eggs`, `.build`, `.env`, `logs`, `.logs`, `temp`, `.temp`, `tmp`, `.tmp`, `vendor`, `.bower_components`.
 
 ## Troubleshooting
 
