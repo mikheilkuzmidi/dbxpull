@@ -164,6 +164,8 @@ Fifty three folder names are skipped by default, the full list being `DEFAULT_SK
 
 `node_modules`, `.npm`, `.yarn`, `.pnpm-store`, `bower_components`, `venv`, `.venv`, `env`, `__pycache__`, `site-packages`, `.git`, `.hg`, `.svn`, `build`, `_build`, `dist`, `out`, `target`, `.next`, `.nuxt`, `.svelte-kit`, `.angular`, `.expo`, `.turbo`, `.parcel-cache`, `.webpack`, `.gradle`, `.maven`, `cmake-build-debug`, `cmake-build-release`, `Pods`, `DerivedData`, `.idea`, `.vscode`, `.vs`, `.eclipse`, `.settings`, `.cache`, `.mypy_cache`, `.pytest_cache`, `.tox`, `.nox`, `.eggs`, `.build`, `.env`, `logs`, `.logs`, `temp`, `.temp`, `tmp`, `.tmp`, `vendor`, `.bower_components`.
 
+Directory matching is case-insensitive. Only parent directory names are matched, so an ordinary file such as `/project/.env` or `/project/build` is included. Turn off dependency filtering at the prompt to include these directories too.
+
 ## Troubleshooting
 
 **"Authentication failed"**  

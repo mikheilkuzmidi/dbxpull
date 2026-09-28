@@ -55,6 +55,9 @@ class Server(ThreadingHTTPServer):
             "/data": b"data",
             "/data.part": b"real file with a part suffix",
             "/project/node_modules/skip.js": b"filtered",
+            "/project/DerivedData/cache": b"filtered",
+            "/project/Pods/cache": b"filtered",
+            "/project/.env": b"test=true",
         }
         self.metadata = []
         for i, (path, data) in enumerate(self.data.items(), 1):
@@ -200,10 +203,13 @@ def run_cli(server, tmp_path, dry=False, limit="0"):
 
 def assert_files(server, tmp_path):
     root = tmp_path / "destination"
-    expected = {path: data for path, data in server.data.items() if "node_modules" not in path}
+    excluded = ("node_modules", "DerivedData", "Pods")
+    expected = {path: data for path, data in server.data.items()
+                if not any(f"/{name}/" in path for name in excluded)}
     for path, data in expected.items():
         assert (root / path.lstrip("/")).read_bytes() == data
-    assert not (root / "project").exists()
+    for name in excluded:
+        assert not (root / "project" / name).exists()
     assert not list(root.rglob(".dbxpull-*.part"))
 
 
@@ -212,7 +218,7 @@ def test_cli_download_resume_and_repair(server, tmp_path):
     assert first.returncode == 0, first.stdout + first.stderr
     assert "All selected files match Dropbox content hashes" in first.stdout
     assert_files(server, tmp_path)
-    assert len(server.downloads) == 5
+    assert len(server.downloads) == 6
     before = server.downloads.copy()
     second = run_cli(server, tmp_path)
     assert second.returncode == 0, second.stdout + second.stderr
@@ -222,7 +228,7 @@ def test_cli_download_resume_and_repair(server, tmp_path):
     third = run_cli(server, tmp_path)
     assert third.returncode == 0, third.stdout + third.stderr
     assert server.downloads["/docs/hello.txt"] == 2
-    assert sum(server.downloads.values()) == 6
+    assert sum(server.downloads.values()) == 7
     assert_files(server, tmp_path)
     assert server.calls["/oauth2/token"] == 3
     assert server.calls["/2/files/list_folder/continue"] == 3

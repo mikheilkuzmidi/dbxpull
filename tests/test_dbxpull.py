@@ -1,6 +1,8 @@
 """Tests for dbxpull package."""
 
 
+import pytest
+
 from dbxpull.config import DEFAULT_SKIP_DIRS, Config
 from dbxpull.filters import get_file_category, parse_extensions, should_skip_file
 from dbxpull.models import ActiveDownload, DownloadStats, FilterOptions
@@ -393,3 +395,21 @@ class TestShouldSkipFile:
 
         assert should_skip_file(small_file, filters) == (False, "")
         assert should_skip_file(large_file, filters) == (True, "size")
+
+
+@pytest.mark.parametrize("directory", ["DerivedData", "Pods", "NODE_MODULES", ".GIT"])
+def test_dependency_directories_match_without_case_sensitivity(directory):
+    entry = MockFileMetadata(f"/project/{directory}/file.txt")
+    assert should_skip_file(entry, FilterOptions()) == (True, "dependency")
+    assert should_skip_file(entry, FilterOptions(skip_dependencies=False)) == (False, "")
+
+
+@pytest.mark.parametrize("name", [".env", "build", "logs", "target", "Pods", "DerivedData"])
+def test_dependency_filter_keeps_regular_files_with_directory_names(name):
+    entry = MockFileMetadata(f"/project/{name}")
+    assert should_skip_file(entry, FilterOptions()) == (False, "")
+
+
+def test_custom_directory_filter_matches_case_insensitively():
+    entry = MockFileMetadata("/project/CUSTOM_CACHE/data.bin")
+    assert should_skip_file(entry, FilterOptions(), {"Custom_Cache"}) == (True, "dependency")

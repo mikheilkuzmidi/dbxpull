@@ -29,10 +29,10 @@ def should_skip_file(
     """
     # Check if in a dependency directory
     if filters.skip_dependencies:
-        path_parts = entry.path_lower.split("/")
-        for part in path_parts:
-            if part in skip_dirs:
-                return True, "dependency"
+        skip_names = {name.casefold() for name in skip_dirs}
+        directory_parts = entry.path_lower.split("/")[:-1]
+        if any(part.casefold() in skip_names for part in directory_parts):
+            return True, "dependency"
 
     # Get file extension
     ext = Path(entry.name).suffix.lower().lstrip(".")
