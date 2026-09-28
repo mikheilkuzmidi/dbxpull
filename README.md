@@ -7,9 +7,9 @@ Pull a whole Dropbox account down to a local or external drive, in parallel, wit
 
 Not a backup tool: there is no version history and no schedule. It is a resumable bulk download, which is what the name says.
 
-![The tail of a real pull, and the summary it ends on](docs/dbxpull.gif)
+![The tail and summary of a sample-file demo](docs/dbxpull.gif)
 
-This recording shows an earlier version pulling a real account: 164 files and 751 MB in 44 seconds at 16.9 MB/s, six downloads at a time, with two rate limit hits handled by backing off rather than failing. Version 1.1 adds a local read-back verification pass, so timings will depend on drive speed as well as the connection.
+This recording is a controlled demo of an earlier version using sample files and a temporary destination: 164 files and 751 MB in 44 seconds at 16.9 MB/s, six downloads at a time, with two simulated rate limit hits handled by backing off rather than failing. It does not show the current content-hash verification. Version 1.1 adds a local read-back verification pass, so timings will depend on drive speed as well as the connection.
 
 ## Features
 
