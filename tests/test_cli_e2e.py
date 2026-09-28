@@ -13,7 +13,7 @@ from urllib.parse import parse_qs
 
 import pytest
 
-from tests.test_integrity import sdk_hash
+from tests.test_integrity import reference_hash
 
 # Only the HTTP destination is redirected. CLI, OAuth, SDK serialization,
 # scanner, filters, concurrency, streaming, verification and exit codes are real.
@@ -64,7 +64,7 @@ class Server(ThreadingHTTPServer):
                 "path_lower": path.lower(), "path_display": path,
                 "client_modified": "2026-01-01T00:00:00Z",
                 "server_modified": "2026-01-01T00:00:00Z",
-                "size": len(data), "content_hash": sdk_hash(data),
+                "size": len(data), "content_hash": reference_hash(data),
                 "is_downloadable": True,
             })
 

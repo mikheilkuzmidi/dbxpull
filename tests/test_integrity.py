@@ -1,11 +1,11 @@
 """Content-hash, stored-file verification and download failure regressions."""
 
+import hashlib
 from datetime import datetime
 from threading import Event
 from unittest.mock import Mock
 
 import pytest
-from dropbox.content_hash import DropboxContentHasher
 from dropbox.exceptions import RateLimitError
 from dropbox.files import FileMetadata
 
@@ -15,13 +15,24 @@ from dbxpull.integrity import BLOCK_SIZE, IntegrityError, content_hash, verify_f
 from dbxpull.models import DownloadStats, FilterOptions
 from dbxpull.rate_limiter import AdaptiveRateLimiter
 
+# Golden values generated with DropboxContentHasher in Dropbox SDK 12.2.2.
+# Keeping the vectors here also tests older supported SDKs without that helper.
+HASH_VECTORS = {
+    0: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    1: "1406e05881e299367766d313e26c05564ec91bf721d31726bd6e46e60689539a",
+    4194303: "99784285b9f600a39f815b655325968cd32cc753af9786ed51c2d03e50be07ad",
+    4194304: "894bbb52d1212d6bcbe9967f1a2169138c4d4af0c8dfbaeae86cd1d3f0c03faf",
+    4194305: "9eb62f609dee341fdcc4521fd6d5a78d9e5c5bb36d844618d9e8d1b32f28ba95",
+    8388608: "4c833f46fdaee9f5022ee03154edbd32606ddb329f9f55546bc33eea1a30ffe5",
+    8388645: "f597187dca91940f54257a374b9df1293b474be1b327caad124fe3fdd3794162",
+}
 
-def sdk_hash(data):
-    """Use Dropbox's independent reference implementation for expected values."""
-    hasher = DropboxContentHasher()
-    for start in range(0, len(data), 7919):
-        hasher.update(data[start:start + 7919])
-    return hasher.hexdigest()
+
+def reference_hash(data):
+    """Construct server-side test metadata independently of the file reader."""
+    hashes = [hashlib.sha256(data[i:i + 4194304]).digest()
+              for i in range(0, len(data), 4194304)]
+    return hashlib.sha256(b"".join(hashes)).hexdigest()
 
 
 def metadata(data=b"correct bytes", path="/folder/file.txt", rev="123456789ab"):
@@ -29,7 +40,7 @@ def metadata(data=b"correct bytes", path="/folder/file.txt", rev="123456789ab"):
         name=path.rsplit("/", 1)[-1], id="id:" + rev, rev=rev,
         client_modified=datetime(2026, 1, 1), server_modified=datetime(2026, 1, 1),
         size=len(data), path_lower=path.lower(), path_display=path,
-        content_hash=sdk_hash(data),
+        content_hash=reference_hash(data),
     )
 
 
@@ -66,8 +77,9 @@ def test_hash_matches_dropbox_reference(tmp_path, size):
     data = (bytes(range(256)) * (size // 256 + 1))[:size]
     path = tmp_path / "fixture"
     path.write_bytes(data)
-    assert content_hash(path) == (size, sdk_hash(data))
-    verify_file(path, size, sdk_hash(data))
+    assert reference_hash(data) == HASH_VECTORS[size]
+    assert content_hash(path) == (size, HASH_VECTORS[size])
+    verify_file(path, size, HASH_VECTORS[size])
 
 
 def test_empty_file_known_hash(tmp_path):
