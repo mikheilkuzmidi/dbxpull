@@ -135,6 +135,8 @@ def validate_and_connect(config: Config) -> "dropbox.Dropbox":
                 app_secret=config.app_secret,
                 oauth2_refresh_token=config.refresh_token,
                 timeout=config.download_timeout,
+                max_retries_on_error=0,
+                max_retries_on_rate_limit=0,
             )
         else:
             # Fall back to legacy access token
@@ -143,6 +145,8 @@ def validate_and_connect(config: Config) -> "dropbox.Dropbox":
             dbx = dropbox.Dropbox(
                 oauth2_access_token=config.access_token,
                 timeout=config.download_timeout,
+                max_retries_on_error=0,
+                max_retries_on_rate_limit=0,
             )
 
         account = dbx.users_get_current_account()
@@ -262,7 +266,7 @@ def main(config: Config | None = None) -> int:
     )
     from .downloader import run_backup
     from .models import DownloadStats
-    from .scanner import scan_dropbox
+    from .scanner import ScanError, scan_dropbox
     from .utils import human_size
 
     # Load config from environment if not provided
@@ -318,60 +322,78 @@ def main(config: Config | None = None) -> int:
     # Validate and connect
     dbx = validate_and_connect(config)
 
-    # Set up logging
-    log_file = Path.cwd() / "dbxpull.log"
-    setup_logging(log_file)
-    logger.info("=" * 50)
-    logger.info("Backup started")
-    print_info(f"Log file: {log_file}")
+    try:
+        # Set up logging
+        log_file = Path.cwd() / "dbxpull.log"
+        setup_logging(log_file)
+        logger.info("=" * 50)
+        logger.info("Backup started")
+        print_info(f"Log file: {log_file}")
 
-    # Configure filters
-    filters = configure_filters()
+        # Configure filters
+        filters = configure_filters()
 
-    # Show summary before starting
-    print_header("Ready to Backup")
-    print()
-    print(f"    {Colors.BOLD}Source:{Colors.RESET}  Dropbox:{config.root_path or '/'}")
-    print(f"    {Colors.BOLD}Dest:{Colors.RESET}    {config.dest_root}")
-    print(f"    {Colors.BOLD}Threads:{Colors.RESET} {config.max_concurrent_downloads}")
-    if config.max_gb_per_run > 0:
-        print(f"    {Colors.BOLD}Limit:{Colors.RESET}   {config.max_gb_per_run:.0f} GB per run")
-    print()
+        # Show summary before starting
+        print_header("Ready to Backup")
+        print()
+        print(f"    {Colors.BOLD}Source:{Colors.RESET}  Dropbox:{config.root_path or '/'}")
+        print(f"    {Colors.BOLD}Dest:{Colors.RESET}    {config.dest_root}")
+        print(f"    {Colors.BOLD}Threads:{Colors.RESET} {config.max_concurrent_downloads}")
+        if config.max_gb_per_run > 0:
+            print(f"    {Colors.BOLD}Limit:{Colors.RESET}   {config.max_gb_per_run:.0f} GB per run")
+        print()
 
-    if not ask_yes_no("Start backup?", True):
-        print_info("Backup cancelled.")
-        return 0
+        if not ask_yes_no("Start backup?", True):
+            print_info("Backup cancelled.")
+            return 0
 
-    # Scan Dropbox
-    print_header("Scanning")
-    files, _, _ = scan_dropbox(dbx, config.root_path, filters, config)
+        # Scan Dropbox
+        print_header("Scanning")
+        try:
+            files, _, _ = scan_dropbox(dbx, config.root_path, filters, config, stop_event)
+        except InterruptedError:
+            print_warning("Scan interrupted. Run again to continue.")
+            return 130
+        except ScanError as error:
+            logger.error("Scan failed: %s", error)
+            print_error(str(error))
+            return 1
 
-    if not files:
-        print_warning("No files to download.")
-        return 0
+        if interrupted:
+            return 130
 
-    # Confirm download
-    total_size = sum(f.size for f in files)
-    if not ask_yes_no(f"Download {len(files):,} files ({human_size(total_size)})?", True):
-        print_info("Backup cancelled.")
-        return 0
+        if not files:
+            print_warning("No files to download.")
+            return 0
 
-    # Run the backup
-    stats = DownloadStats()
-    run_backup(dbx, files, filters, stats, stop_event, config)
+        # Confirm download
+        total_size = sum(f.size for f in files)
+        if not ask_yes_no(f"Download {len(files):,} files ({human_size(total_size)})?", True):
+            print_info("Backup cancelled.")
+            return 0
 
-    # Print summary
-    print_summary(stats, interrupted)
+        # Run the backup
+        stats = DownloadStats()
+        run_backup(dbx, files, filters, stats, stop_event, config)
 
-    # Log completion
-    logger.info(
-        "Backup completed: %d downloaded, %d skipped, %d failed",
-        stats.files_downloaded,
-        stats.files_skipped_exists,
-        stats.files_failed,
-    )
+        # Print summary
+        print_summary(stats, interrupted, dry_run=filters.dry_run)
 
-    return 1 if stats.files_failed > 0 else 0
+        # Log completion
+        logger.info(
+            "Backup completed: %d downloaded, %d skipped, %d failed",
+            stats.files_downloaded,
+            stats.files_skipped_exists,
+            stats.files_failed,
+        )
+
+        if interrupted:
+            return 130
+        if stats.files_failed > 0:
+            return 1
+        return 2 if stats.files_deferred > 0 else 0
+    finally:
+        dbx.close()
 
 
 def run_auth() -> int:

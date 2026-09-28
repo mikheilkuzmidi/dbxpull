@@ -7,9 +7,10 @@ Features:
 - Beautiful terminal progress display
 - Automatic dependency folder filtering
 - Resume capability for interrupted backups
+- Dropbox content-hash verification of downloaded and existing files
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Mikheil Kuzmidi"
 __email__ = ""
 

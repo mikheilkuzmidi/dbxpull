@@ -1,17 +1,47 @@
 """Dropbox folder scanning functionality."""
 
 import time
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from functools import partial
+from threading import Event
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import dropbox
     from dropbox.files import FileMetadata
 
 from .config import Config
-from .display import Colors, print_error, print_info, print_success
+from .display import Colors, print_info, print_success
 from .filters import should_skip_file
 from .models import FilterOptions
-from .utils import human_size, human_time, normalize_dropbox_path
+from .utils import exponential_backoff_with_jitter, human_size, human_time, normalize_dropbox_path
+
+
+class ScanError(RuntimeError):
+    """Dropbox could not be fully listed; a partial scan must not be used."""
+
+
+def _list_with_retries(request: Callable[[], Any], config: Config, stop_event: Event) -> Any:
+    from dropbox.exceptions import ApiError, AuthError, RateLimitError
+
+    for attempt in range(config.max_retries):
+        if stop_event.is_set():
+            raise InterruptedError("Scan interrupted")
+        try:
+            return request()
+        except (ApiError, AuthError) as error:
+            raise ScanError(f"Failed to scan Dropbox: {error}") from error
+        except Exception as error:
+            if attempt == config.max_retries - 1:
+                raise ScanError(f"Failed to scan Dropbox: {error}") from error
+            delay = exponential_backoff_with_jitter(
+                attempt, config.backoff_base, config.backoff_factor, config.backoff_max,
+            )
+            if isinstance(error, RateLimitError) and error.backoff:
+                delay = error.backoff
+            if stop_event.wait(delay):
+                raise InterruptedError("Scan interrupted") from error
+    raise ScanError("No scan attempts configured")
 
 
 def scan_dropbox(
@@ -19,6 +49,7 @@ def scan_dropbox(
     root_path: str,
     filters: FilterOptions,
     config: Config,
+    stop_event: Event | None = None,
 ) -> tuple[list["FileMetadata"], int, int]:
     """
     Scan Dropbox folder recursively and return files to download.
@@ -32,8 +63,9 @@ def scan_dropbox(
     Returns:
         Tuple of (files_to_download, skipped_dependency_count, skipped_other_count)
     """
-    from dropbox.exceptions import ApiError
     from dropbox.files import FileMetadata
+
+    stop_event = stop_event if stop_event is not None else Event()
 
     print()
     print_info("Scanning Dropbox... this may take a while for large accounts.")
@@ -48,17 +80,17 @@ def scan_dropbox(
     skip_other = 0
 
     # Start listing
-    try:
-        result = dbx.files_list_folder(api_root, recursive=True)
-    except ApiError as e:
-        print_error(f"Failed to list folder: {e}")
-        return [], 0, 0
+    result = _list_with_retries(
+        lambda: dbx.files_list_folder(api_root, recursive=True), config, stop_event,
+    )
 
     start_time = time.time()
     spinner = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 
     while True:
         for entry in result.entries:
+            if stop_event.is_set():
+                raise InterruptedError("Scan interrupted")
             if not isinstance(entry, FileMetadata):
                 continue
 
@@ -96,11 +128,10 @@ def scan_dropbox(
         if not result.has_more:
             break
 
-        try:
-            result = dbx.files_list_folder_continue(result.cursor)
-        except Exception as e:
-            print_error(f"Error continuing scan: {e}")
-            break
+        cursor = result.cursor
+        result = _list_with_retries(
+            partial(dbx.files_list_folder_continue, cursor), config, stop_event,
+        )
 
     # Clear the progress line
     print("\r" + " " * 80 + "\r", end="")

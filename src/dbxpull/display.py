@@ -163,12 +163,18 @@ def ask_choice(question: str, choices: list[str], default: int = 0) -> int:
         print_warning(f"Enter a number from 1 to {len(choices)}.")
 
 
-def print_summary(stats: "DownloadStats", interrupted: bool = False) -> None:
+def print_summary(
+    stats: "DownloadStats", interrupted: bool = False, dry_run: bool = False,
+) -> None:
     """Print the backup summary."""
     print("\n" * 3)
 
     if interrupted:
         print_header(f"{Colors.YELLOW}BACKUP INTERRUPTED{Colors.RESET}")
+    elif dry_run:
+        print_header("DRY RUN COMPLETE")
+    elif stats.files_failed or stats.files_deferred:
+        print_header(f"{Colors.YELLOW}BACKUP INCOMPLETE{Colors.RESET}")
     else:
         print_header(f"{Colors.GREEN}BACKUP COMPLETE{Colors.RESET}")
 
@@ -185,6 +191,13 @@ def print_summary(stats: "DownloadStats", interrupted: bool = False) -> None:
     print(f"  {Colors.BOLD}Files{Colors.RESET}")
     print(f"    {Colors.GREEN}Downloaded:{Colors.RESET}   {stats.files_downloaded:,} ({human_size(stats.bytes_downloaded)})")
     print(f"    {Colors.BLUE}Already had:{Colors.RESET}  {stats.files_skipped_exists:,} ({human_size(stats.bytes_skipped)})")
+    print(f"    Verified:     {stats.files_verified:,}")
+    if dry_run:
+        print(f"    Would download: {stats.files_planned:,} ({human_size(stats.bytes_planned)})")
+    if stats.files_deferred:
+        print(f"    Deferred (run limit): {stats.files_deferred:,}")
+    if stats.integrity_failures:
+        print(f"    Integrity check failures: {stats.integrity_failures:,}")
     print(f"    {Colors.YELLOW}Filtered:{Colors.RESET}     {stats.files_skipped_filter:,}")
     print(f"    {Colors.MAGENTA}Dependencies:{Colors.RESET} {stats.files_skipped_dependency:,}")
 
@@ -199,10 +212,14 @@ def print_summary(stats: "DownloadStats", interrupted: bool = False) -> None:
 
     print(f"  {'─' * 60}")
 
-    if not interrupted and stats.files_failed == 0:
-        print(f"  {Colors.GREEN}✓{Colors.RESET} {Colors.BOLD}All done!{Colors.RESET} Files safely backed up.")
-    elif interrupted:
+    if interrupted:
         print(f"  {Colors.YELLOW}⚠{Colors.RESET} Interrupted. Run again to continue.")
+    elif dry_run:
+        print("  Dry run finished. No files were downloaded.")
+    elif stats.files_deferred:
+        print("  Run limit reached. Some files were deferred. Run again or increase the limit.")
+    elif stats.files_failed == 0:
+        print(f"  {Colors.GREEN}✓{Colors.RESET} All selected files match Dropbox content hashes.")
     else:
         print(f"  {Colors.YELLOW}⚠{Colors.RESET} Completed with {stats.files_failed} failures. Check log.")
 

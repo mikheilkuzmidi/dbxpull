@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dbxpull"
-version = "1.0.0"
+version = "1.1.0"
 description = "Pull a whole Dropbox account down to a local or external drive, in parallel"
 readme = "README.md"
 license = "MIT"
@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: System :: Archiving :: Backup",
     "Topic :: Utilities",
 ]
@@ -42,7 +43,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
-    "pytest-cov>=4.0",
+    "pytest-cov>=7.0",
+    "coverage>=7.10",
     "ruff>=0.1.0",
     "mypy>=1.0",
 ]
@@ -59,6 +61,11 @@ Issues = "https://github.com/mikheilkuzmidi/dbxpull/issues"
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+    "/.env.example",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -107,6 +114,7 @@ addopts = "-v --tb=short"
 [tool.coverage.run]
 source = ["src/dbxpull"]
 branch = true
+patch = ["subprocess"]
 
 [tool.coverage.report]
 exclude_lines = [

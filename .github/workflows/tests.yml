@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+env:
+  PYTHONUTF8: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        include:
+          - os: macos-latest
+            python: '3.12'
+          - os: windows-latest
+            python: '3.12'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]" build
+      - run: python -m pytest --cov=dbxpull --cov-report=term-missing
+      - run: python -m ruff check .
+      - run: python -m mypy src/dbxpull
+      - run: python -m build
+      - name: Verify wheel installation and entry point
+        shell: bash
+        run: |
+          python -m pip install --force-reinstall dist/*.whl
+          cd "$RUNNER_TEMP"
+          dbxpull --help
+          python -m dbxpull --help

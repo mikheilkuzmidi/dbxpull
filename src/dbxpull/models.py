@@ -46,6 +46,11 @@ class DownloadStats:
     files_skipped_filter: int = 0
     files_skipped_dependency: int = 0
     files_failed: int = 0
+    files_verified: int = 0
+    integrity_failures: int = 0
+    files_planned: int = 0
+    bytes_planned: int = 0
+    files_deferred: int = 0
     bytes_total: int = 0
     bytes_downloaded: int = 0
     bytes_skipped: int = 0
@@ -124,6 +129,8 @@ class DownloadStats:
             + self.files_skipped_filter
             + self.files_skipped_dependency
             + self.files_failed
+            + self.files_planned
+            + self.files_deferred
         )
 
     @property

@@ -168,6 +168,13 @@ class Config:
         if self.download_timeout < 30:
             errors.append("download_timeout should be at least 30 seconds")
 
+        if self.max_retries < 1:
+            errors.append("max_retries must be at least 1")
+        if self.chunk_size < 1:
+            errors.append("chunk_size must be at least 1")
+        if self.max_gb_per_run < 0:
+            errors.append("max_gb_per_run must not be negative")
+
         return errors
 
     def ensure_dest_exists(self) -> Path:
