@@ -43,6 +43,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "pytest-timeout>=2.3",
     "pytest-cov>=7.0",
     "coverage>=7.10",
     "ruff>=0.1.0",
@@ -110,6 +111,8 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
+timeout = 60
+faulthandler_timeout = 30
 
 [tool.coverage.run]
 source = ["src/dbxpull"]
